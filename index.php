@@ -12,7 +12,7 @@ try {
     // Iestatām PDO kļūdu ziņošanas režīmu uz izņēmumiem
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // SQL vaicājums ar JOIN, lai iegūtu visus rakstus un to komentārus
+    // SQL vaicājums, lai iegūtu visus rakstus un to komentārus, izmantojot LEFT JOIN
     $stmt = $pdo->query("
         SELECT posts.*, comments.author AS comment_author, comments.content AS comment_content
         FROM posts
@@ -21,27 +21,32 @@ try {
 
     // Pārbaudām, vai ir iegūti dati
     if ($stmt->rowCount() > 0) {
-        // Izdrukājam visus ierakstus
+        // Izdrukājam visus ierakstus no posts tabulas
         echo "<h1>Visi raksti no bloga</h1>";
-        echo "<hr>";
-        echo "<ul>";
-        
+        echo "<hr>"; // Horizontāla līnija starp virsrakstu un rakstiem
+        echo "<ul>"; // Sākam sarakstu ar rakstiem
+
+     
 
         // Caur iterāciju izvadām katru ierakstu
         $previousPostId = null;
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Ja raksta ID mainās, tad parādām jaunu rakstu
             if ($previousPostId !== $row['post_id']) {
                 if ($previousPostId !== null) {
-                    echo "</ul>"; // Slēdzam iepriekšējo komentāru sarakstu
+                    // Slēdzam iepriekšējo komentāru sarakstu un pievienojam horizontālo līniju
+                    echo "</ul>";
                     echo "<hr>"; // Horizontāla līnija starp rakstiem
                 }
+
+                // Ja ir jauns raksts, sākam jaunu sarakstu un parādām raksta informāciju
                 echo "<li>";
                 echo "<strong>" . htmlspecialchars($row['title']) . "</strong><br>";
                 echo "Autors: " . htmlspecialchars($row['author']) . "<br>";
                 echo "Saturs: " . nl2br(htmlspecialchars($row['content'])) . "<br>";
-                echo "<em>Izveidots: " . $row['created_at'] . "</em>";
+                echo "<em>Izveidots: " . $row['created_at'] . "</em><br>";
 
-                // Ja rakstam ir komentāri, sākam jaunu sarakstu
+                // Ja rakstam ir komentāri, sākam jaunu komentāru sarakstu
                 echo "<h3>Komentāri:</h3>";
                 echo "<ul>";
             }
@@ -53,11 +58,13 @@ try {
                 echo "</li>";
             }
 
+            // Saglabājam pašreizējo raksta ID, lai varētu pārbaudīt nākamo rakstu
             $previousPostId = $row['post_id'];
         }
 
-        echo "</ul>"; // Slēdzam pēdējo sarakstu
-        echo "</li>";
+        // Slēdzam pēdējo komentāru sarakstu un rakstu
+        echo "</ul>"; // Slēdzam pēdējo komentāru sarakstu
+        echo "</li>"; // Slēdzam pēdējo rakstu
     } else {
         echo "Nav atrasti nekādi ieraksti.";
     }
