@@ -12,47 +12,52 @@ try {
     // Iestatām PDO kļūdu ziņošanas režīmu uz izņēmumiem
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // SQL vaicājums, lai iegūtu visus ierakstus no 'posts' tabulas
-    $stmt = $pdo->query("SELECT * FROM posts");
+    // SQL vaicājums ar JOIN, lai iegūtu visus rakstus un to komentārus
+    $stmt = $pdo->query("
+        SELECT posts.*, comments.author AS comment_author, comments.content AS comment_content
+        FROM posts
+        LEFT JOIN comments ON posts.post_id = comments.post_id
+    ");
 
     // Pārbaudām, vai ir iegūti dati
     if ($stmt->rowCount() > 0) {
         // Izdrukājam visus ierakstus
         echo "<h1>Visi raksti no bloga</h1>";
+        echo "<hr>";
         echo "<ul>";
+        
 
         // Caur iterāciju izvadām katru ierakstu
+        $previousPostId = null;
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            echo "<li>";
-            echo "<strong>" . htmlspecialchars($row['title']) . "</strong><br>";
-            echo "Autors: " . htmlspecialchars($row['author']) . "<br>";
-            echo "Saturs: " . nl2br(htmlspecialchars($row['content'])) . "<br>";
-            echo "<em>Izveidots: " . $row['created_at'] . "</em>";
+            if ($previousPostId !== $row['post_id']) {
+                if ($previousPostId !== null) {
+                    echo "</ul>"; // Slēdzam iepriekšējo komentāru sarakstu
+                    echo "<hr>"; // Horizontāla līnija starp rakstiem
+                }
+                echo "<li>";
+                echo "<strong>" . htmlspecialchars($row['title']) . "</strong><br>";
+                echo "Autors: " . htmlspecialchars($row['author']) . "<br>";
+                echo "Saturs: " . nl2br(htmlspecialchars($row['content'])) . "<br>";
+                echo "<em>Izveidots: " . $row['created_at'] . "</em>";
 
-            // Iegūstam komentārus saistītus ar šo rakstu
-            $postId = $row['post_id'];
-            $commentStmt = $pdo->prepare("SELECT * FROM comments WHERE post_id = :post_id");
-            $commentStmt->bindParam(':post_id', $postId, PDO::PARAM_INT);
-            $commentStmt->execute();
-
-            // Ja rakstam ir komentāri, tad tos parādām
-            if ($commentStmt->rowCount() > 0) {
+                // Ja rakstam ir komentāri, sākam jaunu sarakstu
                 echo "<h3>Komentāri:</h3>";
                 echo "<ul>";
-                while ($comment = $commentStmt->fetch(PDO::FETCH_ASSOC)) {
-                    echo "<li>";
-                    echo "<strong>" . htmlspecialchars($comment['author']) . ":</strong> " . htmlspecialchars($comment['content']);
-                    echo "</li>";
-                }
-                echo "</ul>";
-            } else {
-                echo "<p>Nav komentāru.</p>";
             }
 
-            echo "</li><hr>";
+            // Iegūstam komentārus, ja tie ir pieejami
+            if ($row['comment_author'] && $row['comment_content']) {
+                echo "<li>";
+                echo "<strong>" . htmlspecialchars($row['comment_author']) . ":</strong> " . htmlspecialchars($row['comment_content']);
+                echo "</li>";
+            }
+
+            $previousPostId = $row['post_id'];
         }
-        
-        echo "</ul>";
+
+        echo "</ul>"; // Slēdzam pēdējo sarakstu
+        echo "</li>";
     } else {
         echo "Nav atrasti nekādi ieraksti.";
     }
@@ -61,4 +66,3 @@ try {
     echo "Kļūda: " . $e->getMessage();
 }
 ?>
-
